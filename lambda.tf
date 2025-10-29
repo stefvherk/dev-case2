@@ -72,9 +72,9 @@ resource "aws_cloudwatch_log_subscription_filter" "pfsense_logs_to_lambda" {
 }
 
 resource "aws_dynamodb_table" "lambda_invocations" {
-  name           = "lambda-invocations"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "InvocationID"
+  name         = "lambda-invocations"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "InvocationID"
   attribute {
     name = "InvocationID"
     type = "S"
