@@ -1,0 +1,5 @@
+{\rtf1}
+/.terraform/*
+terraform.tfvars
+*.tfstate
+*.tfstate.backup
