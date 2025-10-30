@@ -18,9 +18,9 @@ DDB_TABLE = os.environ.get("DDB_TABLE")
 table = dynamodb.Table(DDB_TABLE)
 
 SUSPICIOUS_PATTERNS = [
-    r"filterlog: .*block",          # blocked firewall packets
-    r"login attempt",               # failed admin logins
-    r"VPN.*denied",                 # denied VPN connections
+    r"login attempt",                         # failed admin logins (ssh, web UI)
+    r"authentication error",                  # webConfigurator auth failures
+    r"VPN.*denied",                           # denied VPN connections
 ]
 
 def is_suspicious(log_entry: str) -> bool:
