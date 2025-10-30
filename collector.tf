@@ -8,7 +8,7 @@ resource "aws_security_group" "collector_sg" {
     from_port   = 514
     to_port     = 514
     protocol    = "udp"
-    cidr_blocks = ["145.220.75.5/32"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
@@ -81,6 +81,18 @@ CWCFG
     systemctl enable rsyslog
     systemctl start rsyslog
 
+    # Configure rsyslog to listen on UDP 514 and log to /var/log/pfsense/pfsense.log
+  cat > /etc/rsyslog.d/pfsense.conf << 'EOF'
+  $ModLoad imudp
+  $UDPServerRun 514
+
+  $template PfSenseLogs,"/var/log/pfsense/pfsense.log"
+  *.* ?PfSenseLogs
+  & stop
+  EOF
+
+systemctl restart rsyslog
+
     echo "$(date) Terraform test log" >> /var/log/pfsense/pfsense.log
   EOF
 }
@@ -115,4 +127,16 @@ resource "aws_iam_role_policy_attachment" "cloudwatch_attach" {
 resource "aws_iam_instance_profile" "cloudwatch_profile" {
   name = "ec2-cloudwatch-profile"
   role = aws_iam_role.cloudwatch_role.name
+}
+
+resource "aws_eip" "collector_eip" {
+  vpc = true
+  tags = {
+    Name = "collector-eip"
+  }
+}
+
+resource "aws_eip_association" "collector_eip_assoc" {
+  instance_id   = aws_instance.collector.id
+  allocation_id = aws_eip.collector_eip.id
 }
