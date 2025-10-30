@@ -45,18 +45,34 @@ resource "aws_instance" "collector" {
   tags = { Name = "log-collector" }
 
   user_data = <<-EOF
-    #!/bin/bash
-    set -e
+#!/bin/bash
+set -e
 
-    yum update -y
-    yum install -y rsyslog amazon-cloudwatch-agent
+yum update -y
+yum install -y rsyslog amazon-cloudwatch-agent
 
-    mkdir -p /var/log/pfsense
-    touch /var/log/pfsense/pfsense.log
-    chmod 644 /var/log/pfsense/pfsense.log
+# Create log file
+mkdir -p /var/log/pfsense
+touch /var/log/pfsense/pfsense.log
+chmod 644 /var/log/pfsense/pfsense.log
 
-    mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
-    cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWCFG'
+# Configure rsyslog to listen on UDP 514
+cat > /etc/rsyslog.d/pfsense.conf << 'RSYSLOG_EOF'
+$ModLoad imudp
+$UDPServerRun 514
+
+$template PfSenseLogs,"/var/log/pfsense/pfsense.log"
+*.* ?PfSenseLogs
+& stop
+RSYSLOG_EOF
+
+# Restart rsyslog
+systemctl enable rsyslog
+systemctl restart rsyslog
+
+# Configure CloudWatch agent
+mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWCFG'
 {
   "logs": {
     "logs_collected": {
@@ -75,26 +91,12 @@ resource "aws_instance" "collector" {
 }
 CWCFG
 
-    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-      -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
 
-    systemctl enable rsyslog
-    systemctl start rsyslog
-
-    # Configure rsyslog to listen on UDP 514 and log to /var/log/pfsense/pfsense.log
-  cat > /etc/rsyslog.d/pfsense.conf << 'EOF'
-  $ModLoad imudp
-  $UDPServerRun 514
-
-  $template PfSenseLogs,"/var/log/pfsense/pfsense.log"
-  *.* ?PfSenseLogs
-  & stop
-  EOF
-
-systemctl restart rsyslog
-
-    echo "$(date) Terraform test log" >> /var/log/pfsense/pfsense.log
-  EOF
+# Test log
+echo "$(date) Terraform test log" >> /var/log/pfsense/pfsense.log
+EOF
 }
 
 
