@@ -34,7 +34,7 @@ def lambda_handler(event, context):
     invocation_id = str(uuid.uuid4())
     timestamp = datetime.utcnow().isoformat()
 
-    event_str = event.get("log", str(event))
+    event_str = event.get("log") or event.get("message") or str(event)
     # Only send SNS and log if suspicious
     if is_suspicious(event_str):
         message = f"Suspicious pfSense log detected:\n{event_str}"
